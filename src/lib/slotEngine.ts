@@ -34,14 +34,14 @@ function getSymbolWeights(): { symbol: Symbol; weight: number }[] {
   // Weights inversely related to value, then scaled to hit target RTP
   // These weights produce ~96% RTP via Monte Carlo verification
   return [
-    { symbol: '🐱', weight: 2 },   // rare
-    { symbol: '🐈', weight: 4 },
-    { symbol: '💰', weight: 5 },
-    { symbol: '🔔', weight: 7 },
-    { symbol: '🐟', weight: 9 },
+    { symbol: '🐱', weight: 1 },   // very rare
+    { symbol: '🐈', weight: 2 },
+    { symbol: '💰', weight: 3 },
+    { symbol: '🔔', weight: 5 },
+    { symbol: '🐟', weight: 8 },
     { symbol: '🏮', weight: 10 },
-    { symbol: '🎋', weight: 12 },
-    { symbol: '🍀', weight: 14 },
+    { symbol: '🎋', weight: 14 },
+    { symbol: '🍀', weight: 18 },
   ];
 }
 

@@ -17,14 +17,14 @@ const TARGET_RTP = 0.96;
 
 // Symbol payout multipliers (per bet unit, for 3-of-a-kind base)
 const SYMBOL_VALUES: Record<Symbol, number> = {
-  '🐱': 30,  // Golden cat - highest
-  '🐈': 18,  // Cat
-  '💰': 15,  // Money
-  '🔔': 12,  // Bell
-  '🐟': 9,   // Fish
+  '🐱': 28,  // Golden cat - highest
+  '🐈': 17,  // Cat
+  '💰': 14,  // Money
+  '🔔': 11,  // Bell
+  '🐟': 8,   // Fish
   '🏮': 7,   // Lantern
-  '🎋': 6,   // Bamboo
-  '🍀': 5,   // Clover
+  '🎋': 5,   // Bamboo
+  '🍀': 4,   // Clover
 };
 
 // Symbol weight distribution on each reel position.

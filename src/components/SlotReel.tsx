@@ -11,28 +11,27 @@ interface SlotReelProps {
 
 const SlotReel = ({ symbols, spinning, delay, finalSymbols }: SlotReelProps) => {
   const [localSpinning, setLocalSpinning] = useState(false);
+  const stopDelayMs = Math.round(delay * 1000);
 
   useEffect(() => {
     if (spinning) {
       setLocalSpinning(true);
-    } else {
-      // Delay content switch to match animation delay
-      const timeout = setTimeout(() => setLocalSpinning(false), delay * 1000);
-      return () => clearTimeout(timeout);
+      return;
     }
-  }, [spinning, delay]);
 
-  const displaySymbols = localSpinning ? symbols : finalSymbols;
+    const timeout = setTimeout(() => setLocalSpinning(false), stopDelayMs);
+    return () => clearTimeout(timeout);
+  }, [spinning, stopDelayMs]);
+
+  const displaySymbols = localSpinning ? [...symbols, ...symbols, ...symbols] : finalSymbols;
 
   return (
     <div className="relative w-16 sm:w-20 h-48 sm:h-56 overflow-hidden rounded-lg bg-muted/50 border-2 border-gold/30 reel-mask">
       <motion.div
+        key={localSpinning ? "spinning" : `final-${finalSymbols.join("")}`}
         className="flex flex-col items-center"
-        animate={localSpinning ? {
-          y: [0, -1200],
-        } : {
-          y: 0,
-        }}
+        initial={{ y: 0 }}
+        animate={localSpinning ? { y: [0, -1200] } : { y: 0 }}
         transition={localSpinning ? {
           y: {
             duration: 0.3,
@@ -40,16 +39,12 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols }: SlotReelProps) => 
             ease: "linear",
           },
         } : {
-          y: {
-            type: "spring",
-            stiffness: 200,
-            damping: 30,
-          },
+          duration: 0,
         }}
       >
-        {(localSpinning ? [...symbols, ...symbols, ...symbols] : displaySymbols).map((symbol, i) => (
+        {displaySymbols.map((symbol, i) => (
           <div
-            key={i}
+            key={`${symbol}-${i}`}
             className="flex items-center justify-center w-16 sm:w-20 h-16 sm:h-[4.67rem] text-3xl sm:text-4xl select-none"
           >
             {symbol}

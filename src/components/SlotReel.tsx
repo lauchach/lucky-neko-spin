@@ -7,9 +7,13 @@ interface SlotReelProps {
   spinning: boolean;
   delay: number;
   finalSymbols: Symbol[];
+  winningRows?: number[];
+  hasWin?: boolean;
+  matchCount?: number;
+  reelIndex?: number;
 }
 
-const SlotReel = ({ symbols, spinning, delay, finalSymbols }: SlotReelProps) => {
+const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], hasWin = false, matchCount = 0, reelIndex = 0 }: SlotReelProps) => {
   const [localSpinning, setLocalSpinning] = useState(false);
   const stopDelayMs = Math.round(delay * 1000);
 
@@ -24,6 +28,7 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols }: SlotReelProps) => 
   }, [spinning, stopDelayMs]);
 
   const displaySymbols = localSpinning ? [...symbols, ...symbols, ...symbols] : finalSymbols;
+  const showWinState = !localSpinning && !spinning && hasWin;
 
   return (
     <div className="relative w-16 sm:w-20 h-48 sm:h-56 overflow-hidden rounded-lg bg-muted/50 border-2 border-gold/30 reel-mask">
@@ -42,14 +47,22 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols }: SlotReelProps) => 
           duration: 0,
         }}
       >
-        {displaySymbols.map((symbol, i) => (
-          <div
-            key={`${symbol}-${i}`}
-            className="flex items-center justify-center w-16 sm:w-20 h-16 sm:h-[4.67rem] text-3xl sm:text-4xl select-none"
-          >
-            {symbol}
-          </div>
-        ))}
+        {displaySymbols.map((symbol, i) => {
+          const isWinningCell = showWinState && winningRows.includes(i) && reelIndex < matchCount;
+          const isDimmed = showWinState && !isWinningCell;
+
+          return (
+            <div
+              key={`${symbol}-${i}`}
+              className={`flex items-center justify-center w-16 sm:w-20 h-16 sm:h-[4.67rem] text-3xl sm:text-4xl select-none transition-all duration-500
+                ${isWinningCell ? "win-cell" : ""}
+                ${isDimmed ? "opacity-30 scale-90" : ""}
+              `}
+            >
+              {symbol}
+            </div>
+          );
+        })}
       </motion.div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
-import { spin, generateReelStrip, type Symbol } from "@/lib/slotEngine";
+import { spin, generateReelStrip, type Symbol, type SlotResult } from "@/lib/slotEngine";
 
 const SlotMachine = () => {
   const [balance, setBalance] = useState(1000);
@@ -16,6 +16,7 @@ const SlotMachine = () => {
   ]);
   const [lastWin, setLastWin] = useState(0);
   const [showJackpot, setShowJackpot] = useState(false);
+  const [winResult, setWinResult] = useState<SlotResult | null>(null);
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
 
   const handleSpin = useCallback(() => {
@@ -24,6 +25,7 @@ const SlotMachine = () => {
     setBalance(prev => prev - bet);
     setSpinning(true);
     setLastWin(0);
+    setWinResult(null);
 
     const result = spin(bet);
 
@@ -33,6 +35,7 @@ const SlotMachine = () => {
       if (result.winAmount > 0) {
         setLastWin(result.winAmount);
         setBalance(prev => prev + result.winAmount);
+        setWinResult(result);
         if (result.isJackpot) {
           setShowJackpot(true);
           setTimeout(() => setShowJackpot(false), 3000);
@@ -44,6 +47,31 @@ const SlotMachine = () => {
   const adjustBet = (delta: number) => {
     setBet(prev => Math.max(1, Math.min(100, prev + delta)));
   };
+
+  // Calculate match counts per winning line for highlighting
+  const getMatchCountForLine = (row: number): number => {
+    if (!winResult) return 0;
+    const rowSymbols = winResult.reels.map(r => r[row]);
+    const first = rowSymbols[0];
+    let count = 1;
+    for (let i = 1; i < rowSymbols.length; i++) {
+      if (rowSymbols[i] === first) count++;
+      else break;
+    }
+    return count >= 3 ? count : 0;
+  };
+
+  const winningLines = winResult?.winningLines ?? [];
+  const hasWin = winningLines.length > 0;
+
+  // For each reel, determine the max match count across all winning lines
+  const matchCountPerLine: Record<number, number> = {};
+  winningLines.forEach(row => {
+    matchCountPerLine[row] = getMatchCountForLine(row);
+  });
+
+  // The max matchCount across lines (used per reel to know if that reel is "in" the win)
+  const maxMatchCount = Math.max(0, ...Object.values(matchCountPerLine));
 
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-xl mx-auto px-4">
@@ -80,7 +108,7 @@ const SlotMachine = () => {
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
         {/* Reels Container */}
-        <div className="flex gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl bg-background/90 backdrop-blur border border-border">
+        <div className="relative flex gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl bg-background/90 backdrop-blur border border-border">
           {reels.map((reelSymbols, i) => (
             <SlotReel
               key={i}
@@ -88,8 +116,40 @@ const SlotMachine = () => {
               spinning={spinning}
               delay={i * 0.1}
               finalSymbols={reelSymbols}
+              winningRows={winningLines}
+              hasWin={hasWin}
+              matchCount={maxMatchCount}
+              reelIndex={i}
             />
           ))}
+
+          {/* Payline overlays */}
+          <AnimatePresence>
+            {!spinning && winningLines.map(row => {
+              const count = matchCountPerLine[row] || 0;
+              // row 0 = top, row 1 = middle, row 2 = bottom
+              // Each cell is h-16 sm:h-[4.67rem], so position accordingly
+              // Container padding is p-3 sm:p-4
+              const rowPercent = ((row + 0.5) / 3) * 100;
+
+              return (
+                <motion.div
+                  key={`payline-${row}`}
+                  className="absolute left-3 sm:left-4 pointer-events-none"
+                  style={{
+                    top: `${rowPercent}%`,
+                    right: `calc(${((5 - count) / 5) * 100}% + 0.75rem)`,
+                  }}
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
+                  exit={{ scaleX: 0, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  <div className="h-[3px] payline-glow origin-left" />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
 
         {/* Win line indicator */}

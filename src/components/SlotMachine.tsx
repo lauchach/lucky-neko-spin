@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
 import { spin, generateReelStrip, type Symbol, type SlotResult } from "@/lib/slotEngine";
+import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound } from "@/lib/sounds";
 
 const SlotMachine = () => {
   const [balance, setBalance] = useState(1000);
@@ -18,33 +19,63 @@ const SlotMachine = () => {
   const [showJackpot, setShowJackpot] = useState(false);
   const [winResult, setWinResult] = useState<SlotResult | null>(null);
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
+  const stopSpinSound = useRef<(() => void) | null>(null);
 
   const handleSpin = useCallback(() => {
     if (spinning || balance < bet) return;
 
+    resumeAudio();
     setBalance(prev => prev - bet);
     setSpinning(true);
     setLastWin(0);
     setWinResult(null);
 
+    // Start spin sound loop
+    stopSpinSound.current = playSpinSound();
+
     const result = spin(bet);
 
+    // Staggered reel stops
+    const NUM_REELS = 5;
+    for (let i = 0; i < NUM_REELS; i++) {
+      setTimeout(() => {
+        playReelStop();
+      }, 2000 + i * 100);
+    }
+
     setTimeout(() => {
+      // Stop spin sound
+      stopSpinSound.current?.();
+      stopSpinSound.current = null;
+
       setSpinning(false);
       setReels(result.reels);
       if (result.winAmount > 0) {
         setLastWin(result.winAmount);
         setBalance(prev => prev + result.winAmount);
         setWinResult(result);
+
         if (result.isJackpot) {
+          setTimeout(() => playJackpotSound(), 200);
           setShowJackpot(true);
           setTimeout(() => setShowJackpot(false), 3000);
+        } else {
+          setTimeout(() => playWinSound(), 200);
         }
       }
     }, 2000);
   }, [spinning, balance, bet]);
 
+  // Cleanup spin sound on unmount
+  useEffect(() => {
+    return () => {
+      stopSpinSound.current?.();
+    };
+  }, []);
+
   const adjustBet = (delta: number) => {
+    playClickSound();
+    resumeAudio();
     setBet(prev => Math.max(1, Math.min(100, prev + delta)));
   };
 
@@ -64,13 +95,11 @@ const SlotMachine = () => {
   const winningLines = winResult?.winningLines ?? [];
   const hasWin = winningLines.length > 0;
 
-  // For each reel, determine the max match count across all winning lines
   const matchCountPerLine: Record<number, number> = {};
   winningLines.forEach(row => {
     matchCountPerLine[row] = getMatchCountForLine(row);
   });
 
-  // The max matchCount across lines (used per reel to know if that reel is "in" the win)
   const maxMatchCount = Math.max(0, ...Object.values(matchCountPerLine));
 
   return (
@@ -127,9 +156,6 @@ const SlotMachine = () => {
           <AnimatePresence>
             {!spinning && winningLines.map(row => {
               const count = matchCountPerLine[row] || 0;
-              // row 0 = top, row 1 = middle, row 2 = bottom
-              // Each cell is h-16 sm:h-[4.67rem], so position accordingly
-              // Container padding is p-3 sm:p-4
               const rowPercent = ((row + 0.5) / 3) * 100;
 
               return (
@@ -199,7 +225,7 @@ const SlotMachine = () => {
 
         {/* Max Bet */}
         <button
-          onClick={() => setBet(100)}
+          onClick={() => { playClickSound(); resumeAudio(); setBet(100); }}
           className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg red-gradient text-secondary-foreground text-xs sm:text-sm font-bold uppercase tracking-wider hover:brightness-110 transition-all"
           disabled={spinning}
         >

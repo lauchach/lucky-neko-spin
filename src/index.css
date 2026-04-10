@@ -119,6 +119,14 @@
   mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
 }
-  mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+
+@keyframes payline-sweep {
+  0%, 100% { box-shadow: 0 0 6px hsl(45 100% 50% / 0.6), 0 0 12px hsl(45 100% 50% / 0.3); }
+  50% { box-shadow: 0 0 12px hsl(45 100% 50% / 1), 0 0 24px hsl(45 100% 50% / 0.5); }
+}
+
+.payline-glow {
+  background: linear-gradient(90deg, hsl(45 100% 50% / 0.9), hsl(45 100% 60% / 0.7));
+  animation: payline-sweep 1s ease-in-out infinite;
+  border-radius: 2px;
 }

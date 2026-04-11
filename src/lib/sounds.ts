@@ -114,7 +114,7 @@ export function playSpinSound(): () => void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     // Softer triangle wave with lower frequency for pleasant ticking
     osc.type = "triangle";
@@ -147,7 +147,7 @@ export function playReelStop() {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getSfxDest());
 
   osc.type = "triangle";
   osc.frequency.setValueAtTime(200, ctx.currentTime);
@@ -170,7 +170,7 @@ export function playWinSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     osc.type = "sine";
     const startTime = ctx.currentTime + i * 0.12;
@@ -208,7 +208,7 @@ export function playJackpotSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     osc.type = "square";
     const startTime = ctx.currentTime + time;
@@ -225,7 +225,7 @@ export function playJackpotSound() {
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.connect(gain2);
-    gain2.connect(ctx.destination);
+    gain2.connect(getSfxDest());
 
     osc2.type = "sine";
     osc2.frequency.setValueAtTime(freq * 2, startTime);
@@ -242,7 +242,7 @@ export function playJackpotSound() {
   const noise = ctx.createOscillator();
   const noiseGain = ctx.createGain();
   noise.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
+  noiseGain.connect(getSfxDest());
   noise.type = "sawtooth";
   noise.frequency.setValueAtTime(2000, ctx.currentTime);
   noise.frequency.exponentialRampToValueAtTime(8000, ctx.currentTime + 1.8);
@@ -260,7 +260,7 @@ export function playClickSound() {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getSfxDest());
 
   osc.type = "sine";
   osc.frequency.setValueAtTime(1200, ctx.currentTime);

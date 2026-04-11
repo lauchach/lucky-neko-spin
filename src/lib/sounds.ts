@@ -1,12 +1,39 @@
 // Web Audio API synthesized sound effects for the slot machine
 
 let audioCtx: AudioContext | null = null;
+let musicGainNode: GainNode | null = null;
+let sfxGainNode: GainNode | null = null;
+let musicPlaying = false;
 
 function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
+    musicGainNode = audioCtx.createGain();
+    musicGainNode.connect(audioCtx.destination);
+    sfxGainNode = audioCtx.createGain();
+    sfxGainNode.connect(audioCtx.destination);
   }
   return audioCtx;
+}
+
+export function getSfxDest(): GainNode {
+  getCtx();
+  return sfxGainNode!;
+}
+
+export function getMusicDest(): GainNode {
+  getCtx();
+  return musicGainNode!;
+}
+
+export function setMusicVolume(v: number) {
+  const dest = getMusicDest();
+  dest.gain.setValueAtTime(v, getCtx().currentTime);
+}
+
+export function setSfxVolume(v: number) {
+  const dest = getSfxDest();
+  dest.gain.setValueAtTime(v, getCtx().currentTime);
 }
 
 // Resume audio context on first user interaction (autoplay policy)
@@ -15,6 +42,61 @@ export function resumeAudio() {
   if (ctx.state === "suspended") {
     ctx.resume();
   }
+  if (!musicPlaying) {
+    startBackgroundMusic();
+    musicPlaying = true;
+  }
+}
+
+/**
+ * Background music — looping mellow pentatonic melody
+ */
+function startBackgroundMusic() {
+  const ctx = getCtx();
+  const dest = getMusicDest();
+
+  const pentatonic = [261, 293, 329, 392, 440]; // C4 D4 E4 G4 A4
+  let noteIndex = 0;
+
+  const playNote = () => {
+    if (!musicPlaying && noteIndex > 0) return;
+
+    const freq = pentatonic[noteIndex % pentatonic.length];
+    const variation = Math.random() > 0.3 ? freq : pentatonic[Math.floor(Math.random() * pentatonic.length)];
+
+    // Pad tone
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.type = "sine";
+    const t = ctx.currentTime;
+    osc.frequency.setValueAtTime(variation, t);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.03, t + 0.1);
+    gain.gain.linearRampToValueAtTime(0.02, t + 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    osc.start(t);
+    osc.stop(t + 1.2);
+
+    // Sub bass layer
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    sub.connect(subGain);
+    subGain.connect(dest);
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(variation / 2, t);
+    subGain.gain.setValueAtTime(0, t);
+    subGain.gain.linearRampToValueAtTime(0.015, t + 0.15);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    sub.start(t);
+    sub.stop(t + 1.0);
+
+    noteIndex++;
+    setTimeout(playNote, 800 + Math.random() * 400);
+  };
+
+  playNote();
 }
 
 /**
@@ -32,7 +114,7 @@ export function playSpinSound(): () => void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     // Softer triangle wave with lower frequency for pleasant ticking
     osc.type = "triangle";
@@ -65,7 +147,7 @@ export function playReelStop() {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getSfxDest());
 
   osc.type = "triangle";
   osc.frequency.setValueAtTime(200, ctx.currentTime);
@@ -88,7 +170,7 @@ export function playWinSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     osc.type = "sine";
     const startTime = ctx.currentTime + i * 0.12;
@@ -126,7 +208,7 @@ export function playJackpotSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(getSfxDest());
 
     osc.type = "square";
     const startTime = ctx.currentTime + time;
@@ -143,7 +225,7 @@ export function playJackpotSound() {
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.connect(gain2);
-    gain2.connect(ctx.destination);
+    gain2.connect(getSfxDest());
 
     osc2.type = "sine";
     osc2.frequency.setValueAtTime(freq * 2, startTime);
@@ -160,7 +242,7 @@ export function playJackpotSound() {
   const noise = ctx.createOscillator();
   const noiseGain = ctx.createGain();
   noise.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
+  noiseGain.connect(getSfxDest());
   noise.type = "sawtooth";
   noise.frequency.setValueAtTime(2000, ctx.currentTime);
   noise.frequency.exponentialRampToValueAtTime(8000, ctx.currentTime + 1.8);
@@ -178,7 +260,7 @@ export function playClickSound() {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getSfxDest());
 
   osc.type = "sine";
   osc.frequency.setValueAtTime(1200, ctx.currentTime);

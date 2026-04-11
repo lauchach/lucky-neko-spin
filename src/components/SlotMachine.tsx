@@ -2,7 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
 import { spin, generateReelStrip, type Symbol, type SlotResult } from "@/lib/slotEngine";
-import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound } from "@/lib/sounds";
+import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound, setMusicVolume, setSfxVolume } from "@/lib/sounds";
+import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
 
 const SlotMachine = () => {
   const [balance, setBalance] = useState(1000);
@@ -18,6 +19,8 @@ const SlotMachine = () => {
   const [lastWin, setLastWin] = useState(0);
   const [showJackpot, setShowJackpot] = useState(false);
   const [winResult, setWinResult] = useState<SlotResult | null>(null);
+  const [musicMuted, setMusicMuted] = useState(false);
+  const [sfxMuted, setSfxMuted] = useState(false);
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
   const stopSpinSound = useRef<(() => void) | null>(null);
 
@@ -102,9 +105,25 @@ const SlotMachine = () => {
 
   const maxMatchCount = Math.max(0, ...Object.values(matchCountPerLine));
 
+  const toggleMusic = () => {
+    resumeAudio();
+    const next = !musicMuted;
+    setMusicMuted(next);
+    setMusicVolume(next ? 0 : 1);
+  };
+
+  const toggleSfx = () => {
+    resumeAudio();
+    const next = !sfxMuted;
+    setSfxMuted(next);
+    setSfxVolume(next ? 0 : 1);
+  };
+
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-xl mx-auto px-4">
-      {/* Title */}
+      {/* Title + Sound Controls */}
+      <div className="flex items-center justify-between w-full">
+        <div className="w-20" />
       <motion.h1
         className="font-display text-3xl sm:text-5xl font-bold text-primary animate-glow-pulse tracking-wider"
         initial={{ y: -20, opacity: 0 }}
@@ -112,6 +131,23 @@ const SlotMachine = () => {
       >
         Lucky Neko
       </motion.h1>
+        <div className="flex items-center gap-2 w-20 justify-end">
+          <button
+            onClick={toggleMusic}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+            title={musicMuted ? "เปิดเพลง" : "ปิดเพลง"}
+          >
+            {musicMuted ? <Music className="w-4 h-4 opacity-40" /> : <Music2 className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={toggleSfx}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+            title={sfxMuted ? "เปิดเสียงเกม" : "ปิดเสียงเกม"}
+          >
+            {sfxMuted ? <VolumeX className="w-4 h-4 opacity-40" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
 
       {/* Balance */}
       <div className="flex items-center gap-4 sm:gap-8 w-full justify-between">

@@ -49,51 +49,80 @@ export function resumeAudio() {
 }
 
 /**
- * Background music — looping mellow pentatonic melody
+ * Background music — fun Chinese-style pentatonic piano melody
  */
 function startBackgroundMusic() {
   const ctx = getCtx();
   const dest = getMusicDest();
 
-  const pentatonic = [261, 293, 329, 392, 440]; // C4 D4 E4 G4 A4
-  let noteIndex = 0;
+  // Chinese pentatonic scale (宮商角徵羽) in multiple octaves
+  const scaleBase = [262, 294, 330, 392, 440]; // C D E G A
+  const scaleHigh = scaleBase.map(f => f * 2);
+  const allNotes = [...scaleBase, ...scaleHigh];
+
+  // Pre-composed melodic phrases that sound Chinese/festive
+  const phrases = [
+    // phrase 1 — bouncy ascending
+    [392, 440, 524, 588, 524, 440, 392],
+    // phrase 2 — descending playful
+    [784, 660, 524, 440, 392, 440, 524],
+    // phrase 3 — call-and-response
+    [524, 588, 660, 524, 392, 440, 392],
+    // phrase 4 — festive jump
+    [392, 524, 440, 660, 524, 784, 660],
+    // phrase 5 — resolving
+    [660, 524, 440, 392, 330, 392, 440],
+    // phrase 6 — fast ornament
+    [524, 588, 524, 440, 524, 660, 524],
+  ];
+
+  let phraseIndex = 0;
+  let noteInPhrase = 0;
 
   const playNote = () => {
-    if (!musicPlaying && noteIndex > 0) return;
+    const phrase = phrases[phraseIndex % phrases.length];
+    const freq = phrase[noteInPhrase];
+    const t = ctx.currentTime;
 
-    const freq = pentatonic[noteIndex % pentatonic.length];
-    const variation = Math.random() > 0.3 ? freq : pentatonic[Math.floor(Math.random() * pentatonic.length)];
-
-    // Pad tone
+    // Piano-like tone: sine + slight harmonic for brightness
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(dest);
-    osc.type = "sine";
-    const t = ctx.currentTime;
-    osc.frequency.setValueAtTime(variation, t);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, t);
+
+    // Piano envelope: quick attack, natural decay
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.03, t + 0.1);
-    gain.gain.linearRampToValueAtTime(0.02, t + 0.6);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    gain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.03, t + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
     osc.start(t);
-    osc.stop(t + 1.2);
+    osc.stop(t + 0.6);
 
-    // Sub bass layer
-    const sub = ctx.createOscillator();
-    const subGain = ctx.createGain();
-    sub.connect(subGain);
-    subGain.connect(dest);
-    sub.type = "sine";
-    sub.frequency.setValueAtTime(variation / 2, t);
-    subGain.gain.setValueAtTime(0, t);
-    subGain.gain.linearRampToValueAtTime(0.015, t + 0.15);
-    subGain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
-    sub.start(t);
-    sub.stop(t + 1.0);
+    // Bright harmonic overtone
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(dest);
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(freq * 3, t);
+    gain2.gain.setValueAtTime(0, t);
+    gain2.gain.linearRampToValueAtTime(0.008, t + 0.01);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc2.start(t);
+    osc2.stop(t + 0.3);
 
-    noteIndex++;
-    setTimeout(playNote, 800 + Math.random() * 400);
+    noteInPhrase++;
+    if (noteInPhrase >= phrase.length) {
+      noteInPhrase = 0;
+      phraseIndex++;
+    }
+
+    // Varying rhythm: mix of 8th and 16th note feel
+    const isQuick = Math.random() > 0.6;
+    const delay = isQuick ? 150 : 280;
+    setTimeout(playNote, delay);
   };
 
   playNote();

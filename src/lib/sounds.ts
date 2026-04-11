@@ -49,79 +49,144 @@ export function resumeAudio() {
 }
 
 /**
- * Background music — fun Chinese-style pentatonic piano melody
+ * Background music — Chinese festive style with erhu, guzheng, and percussion feel
  */
 function startBackgroundMusic() {
   const ctx = getCtx();
   const dest = getMusicDest();
 
-  // Chinese pentatonic scale (宮商角徵羽) in multiple octaves
-  const scaleBase = [262, 294, 330, 392, 440]; // C D E G A
-  const scaleHigh = scaleBase.map(f => f * 2);
-  const allNotes = [...scaleBase, ...scaleHigh];
-
-  // Pre-composed melodic phrases that sound Chinese/festive
+  // Chinese pentatonic: C D E G A across octaves
   const phrases = [
-    // phrase 1 — bouncy ascending
-    [392, 440, 524, 588, 524, 440, 392],
-    // phrase 2 — descending playful
-    [784, 660, 524, 440, 392, 440, 524],
-    // phrase 3 — call-and-response
-    [524, 588, 660, 524, 392, 440, 392],
-    // phrase 4 — festive jump
-    [392, 524, 440, 660, 524, 784, 660],
-    // phrase 5 — resolving
-    [660, 524, 440, 392, 330, 392, 440],
-    // phrase 6 — fast ornament
-    [524, 588, 524, 440, 524, 660, 524],
+    [392, 440, 524, 660, 784, 660, 524, 440],
+    [784, 660, 524, 440, 392, 330, 392, 440],
+    [524, 660, 784, 880, 784, 660, 524, 392],
+    [440, 524, 392, 330, 392, 524, 660, 524],
+    [660, 784, 880, 784, 660, 524, 440, 524],
+    [392, 524, 660, 524, 440, 392, 330, 392],
   ];
 
-  let phraseIndex = 0;
-  let noteInPhrase = 0;
+  let phraseIdx = 0;
+  let noteIdx = 0;
+  let beat = 0;
 
   const playNote = () => {
-    const phrase = phrases[phraseIndex % phrases.length];
-    const freq = phrase[noteInPhrase];
+    const phrase = phrases[phraseIdx % phrases.length];
+    const freq = phrase[noteIdx];
     const t = ctx.currentTime;
 
-    // Piano-like tone: sine + slight harmonic for brightness
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(dest);
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, t);
+    // === Erhu-like lead (sawtooth + vibrato) ===
+    const erhu = ctx.createOscillator();
+    const erhuGain = ctx.createGain();
+    const vibrato = ctx.createOscillator();
+    const vibratoGain = ctx.createGain();
 
-    // Piano envelope: quick attack, natural decay
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.06, t + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.03, t + 0.15);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-    osc.start(t);
-    osc.stop(t + 0.6);
+    // Vibrato modulation
+    vibrato.frequency.setValueAtTime(5.5, t);
+    vibratoGain.gain.setValueAtTime(8, t);
+    vibrato.connect(vibratoGain);
+    vibratoGain.connect(erhu.frequency);
 
-    // Bright harmonic overtone
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(dest);
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(freq * 3, t);
-    gain2.gain.setValueAtTime(0, t);
-    gain2.gain.linearRampToValueAtTime(0.008, t + 0.01);
-    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc2.start(t);
-    osc2.stop(t + 0.3);
+    erhu.connect(erhuGain);
+    erhuGain.connect(dest);
+    erhu.type = "sawtooth";
+    erhu.frequency.setValueAtTime(freq, t);
 
-    noteInPhrase++;
-    if (noteInPhrase >= phrase.length) {
-      noteInPhrase = 0;
-      phraseIndex++;
+    // Erhu envelope — expressive slide-in
+    erhuGain.gain.setValueAtTime(0, t);
+    erhuGain.gain.linearRampToValueAtTime(0.04, t + 0.03);
+    erhuGain.gain.linearRampToValueAtTime(0.035, t + 0.2);
+    erhuGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+
+    erhu.start(t);
+    erhu.stop(t + 0.5);
+    vibrato.start(t);
+    vibrato.stop(t + 0.5);
+
+    // === Guzheng-like pluck (square + fast decay, high harmonics) ===
+    if (beat % 2 === 0) {
+      const gz = ctx.createOscillator();
+      const gzGain = ctx.createGain();
+      gz.connect(gzGain);
+      gzGain.connect(dest);
+      gz.type = "square";
+      gz.frequency.setValueAtTime(freq * 2, t);
+
+      gzGain.gain.setValueAtTime(0, t);
+      gzGain.gain.linearRampToValueAtTime(0.025, t + 0.005);
+      gzGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      gz.start(t);
+      gz.stop(t + 0.25);
+
+      // Guzheng shimmer harmonic
+      const gzH = ctx.createOscillator();
+      const gzHGain = ctx.createGain();
+      gzH.connect(gzHGain);
+      gzHGain.connect(dest);
+      gzH.type = "sine";
+      gzH.frequency.setValueAtTime(freq * 4, t);
+      gzHGain.gain.setValueAtTime(0, t);
+      gzHGain.gain.linearRampToValueAtTime(0.006, t + 0.005);
+      gzHGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      gzH.start(t);
+      gzH.stop(t + 0.15);
     }
 
-    // Varying rhythm: mix of 8th and 16th note feel
-    const isQuick = Math.random() > 0.6;
-    const delay = isQuick ? 150 : 280;
+    // === Percussion — woodblock/drum on downbeats ===
+    if (beat % 4 === 0) {
+      // Woodblock click
+      const wb = ctx.createOscillator();
+      const wbGain = ctx.createGain();
+      wb.connect(wbGain);
+      wbGain.connect(dest);
+      wb.type = "square";
+      wb.frequency.setValueAtTime(1200, t);
+      wb.frequency.exponentialRampToValueAtTime(600, t + 0.02);
+      wbGain.gain.setValueAtTime(0.05, t);
+      wbGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      wb.start(t);
+      wb.stop(t + 0.04);
+    }
+
+    if (beat % 8 === 2) {
+      // Small gong/cymbal
+      const gong = ctx.createOscillator();
+      const gongGain = ctx.createGain();
+      gong.connect(gongGain);
+      gongGain.connect(dest);
+      gong.type = "triangle";
+      gong.frequency.setValueAtTime(3000, t);
+      gong.frequency.exponentialRampToValueAtTime(1500, t + 0.1);
+      gongGain.gain.setValueAtTime(0.02, t);
+      gongGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      gong.start(t);
+      gong.stop(t + 0.2);
+    }
+
+    // === Bass drone on phrase changes ===
+    if (noteIdx === 0) {
+      const bass = ctx.createOscillator();
+      const bassGain = ctx.createGain();
+      bass.connect(bassGain);
+      bassGain.connect(dest);
+      bass.type = "sine";
+      bass.frequency.setValueAtTime(freq / 4, t);
+      bassGain.gain.setValueAtTime(0, t);
+      bassGain.gain.linearRampToValueAtTime(0.025, t + 0.05);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+      bass.start(t);
+      bass.stop(t + 0.8);
+    }
+
+    noteIdx++;
+    beat++;
+    if (noteIdx >= phrase.length) {
+      noteIdx = 0;
+      phraseIdx++;
+    }
+
+    // Festive rhythm — alternating fast/slow
+    const delays = [200, 180, 220, 160, 240, 200, 180, 260];
+    const delay = delays[beat % delays.length];
     setTimeout(playNote, delay);
   };
 

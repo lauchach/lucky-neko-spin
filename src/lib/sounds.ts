@@ -18,7 +18,7 @@ export function resumeAudio() {
 }
 
 /**
- * Slot reel spinning — a rhythmic clicking/ticking sound
+ * Slot reel spinning — a rhythmic soft ticking sound
  * Returns a stop function to end the loop
  */
 export function playSpinSound(): () => void {
@@ -34,15 +34,19 @@ export function playSpinSound(): () => void {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.type = "square";
-    osc.frequency.setValueAtTime(800 + Math.random() * 400, ctx.currentTime);
-    gain.gain.setValueAtTime(0.06, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+    // Softer triangle wave with lower frequency for pleasant ticking
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(300 + Math.random() * 150, ctx.currentTime);
+    
+    // Gentle envelope - softer attack and longer decay
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
 
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.03);
+    osc.stop(ctx.currentTime + 0.08);
 
-    timeout = window.setTimeout(tick, 60);
+    timeout = window.setTimeout(tick, 80);
   };
 
   tick();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Symbol } from "@/lib/slotEngine";
+import { Symbol, SCATTER_SYMBOL } from "@/lib/slotEngine";
 
 interface SlotReelProps {
   symbols: Symbol[];
@@ -48,8 +48,9 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], ha
         }}
       >
         {displaySymbols.map((symbol, i) => {
+          const isScatter = symbol === SCATTER_SYMBOL;
           const isWinningCell = showWinState && winningRows.includes(i) && reelIndex < matchCount;
-          const isDimmed = showWinState && !isWinningCell;
+          const isDimmed = showWinState && !isWinningCell && !isScatter;
 
           return (
             <div
@@ -57,6 +58,7 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], ha
               className={`flex items-center justify-center w-16 sm:w-20 h-16 sm:h-[4.67rem] text-3xl sm:text-4xl select-none transition-all duration-500
                 ${isWinningCell ? "win-cell" : ""}
                 ${isDimmed ? "opacity-30 scale-90" : ""}
+                ${isScatter && !localSpinning ? "scatter-symbol" : ""}
               `}
             >
               {symbol}

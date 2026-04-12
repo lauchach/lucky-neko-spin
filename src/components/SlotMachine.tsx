@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
+import FreeSpinOverlay from "./FreeSpinOverlay";
 import { spin, generateReelStrip, type Symbol, type SlotResult } from "@/lib/slotEngine";
 import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound, setMusicVolume, setSfxVolume } from "@/lib/sounds";
 import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
@@ -21,42 +22,53 @@ const SlotMachine = () => {
   const [winResult, setWinResult] = useState<SlotResult | null>(null);
   const [musicMuted, setMusicMuted] = useState(false);
   const [sfxMuted, setSfxMuted] = useState(false);
+
+  // Free spin state
+  const [freeSpinsRemaining, setFreeSpinsRemaining] = useState(0);
+  const [inFreeSpin, setInFreeSpin] = useState(false);
+  const [totalFreeSpinWin, setTotalFreeSpinWin] = useState(0);
+  const [showFreeSpinIntro, setShowFreeSpinIntro] = useState(false);
+  const [showFreeSpinEnd, setShowFreeSpinEnd] = useState(false);
+  const [freeSpinsAwarded, setFreeSpinsAwarded] = useState(0);
+
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
   const stopSpinSound = useRef<(() => void) | null>(null);
 
-  const handleSpin = useCallback(() => {
-    if (spinning || balance < bet) return;
+  const doSpin = useCallback((isFree: boolean) => {
+    if (spinning) return;
+    if (!isFree && balance < bet) return;
 
     resumeAudio();
-    setBalance(prev => prev - bet);
+    if (!isFree) {
+      setBalance(prev => prev - bet);
+    }
     setSpinning(true);
     setLastWin(0);
     setWinResult(null);
 
-    // Start spin sound loop
     stopSpinSound.current = playSpinSound();
 
     const result = spin(bet);
 
-    // Staggered reel stops
-    const NUM_REELS = 5;
-    for (let i = 0; i < NUM_REELS; i++) {
-      setTimeout(() => {
-        playReelStop();
-      }, 2000 + i * 100);
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => playReelStop(), 2000 + i * 100);
     }
 
     setTimeout(() => {
-      // Stop spin sound
       stopSpinSound.current?.();
       stopSpinSound.current = null;
 
       setSpinning(false);
       setReels(result.reels);
+
       if (result.winAmount > 0) {
         setLastWin(result.winAmount);
         setBalance(prev => prev + result.winAmount);
         setWinResult(result);
+
+        if (isFree) {
+          setTotalFreeSpinWin(prev => prev + result.winAmount);
+        }
 
         if (result.isJackpot) {
           setTimeout(() => playJackpotSound(), 200);
@@ -66,10 +78,50 @@ const SlotMachine = () => {
           setTimeout(() => playWinSound(), 200);
         }
       }
+
+      // Handle free spins trigger (can retrigger during free spins)
+      if (result.freeSpinsAwarded > 0) {
+        const wasAlreadyFree = isFree;
+        setFreeSpinsAwarded(result.freeSpinsAwarded);
+        setFreeSpinsRemaining(prev => prev + result.freeSpinsAwarded);
+        if (!wasAlreadyFree) {
+          setInFreeSpin(true);
+          setTotalFreeSpinWin(result.winAmount);
+        }
+        setShowFreeSpinIntro(true);
+        setTimeout(() => setShowFreeSpinIntro(false), 2500);
+      } else if (isFree) {
+        setFreeSpinsRemaining(prev => {
+          const next = prev - 1;
+          if (next <= 0) {
+            // End free spins
+            setTimeout(() => {
+              setShowFreeSpinEnd(true);
+              setTimeout(() => {
+                setShowFreeSpinEnd(false);
+                setInFreeSpin(false);
+                setTotalFreeSpinWin(0);
+              }, 3000);
+            }, 500);
+          }
+          return next;
+        });
+      }
     }, 2000);
   }, [spinning, balance, bet]);
 
-  // Cleanup spin sound on unmount
+  const handleSpin = useCallback(() => {
+    doSpin(inFreeSpin);
+  }, [doSpin, inFreeSpin]);
+
+  // Auto-spin during free spins
+  useEffect(() => {
+    if (inFreeSpin && !spinning && freeSpinsRemaining > 0 && !showFreeSpinIntro && !showFreeSpinEnd) {
+      const timer = setTimeout(() => doSpin(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [inFreeSpin, spinning, freeSpinsRemaining, showFreeSpinIntro, showFreeSpinEnd, doSpin]);
+
   useEffect(() => {
     return () => {
       stopSpinSound.current?.();
@@ -82,7 +134,6 @@ const SlotMachine = () => {
     setBet(prev => Math.max(1, Math.min(100, prev + delta)));
   };
 
-  // Calculate match counts per winning line for highlighting
   const getMatchCountForLine = (row: number): number => {
     if (!winResult) return 0;
     const rowSymbols = winResult.reels.map(r => r[row]);
@@ -124,13 +175,13 @@ const SlotMachine = () => {
       {/* Title + Sound Controls */}
       <div className="flex items-center justify-between w-full">
         <div className="w-20" />
-      <motion.h1
-        className="font-display text-3xl sm:text-5xl font-bold text-primary animate-glow-pulse tracking-wider"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-      >
-        Lucky Neko
-      </motion.h1>
+        <motion.h1
+          className="font-display text-3xl sm:text-5xl font-bold text-primary animate-glow-pulse tracking-wider"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+        >
+          Lucky Neko
+        </motion.h1>
         <div className="flex items-center gap-2 w-20 justify-end">
           <button
             onClick={toggleMusic}
@@ -148,6 +199,23 @@ const SlotMachine = () => {
           </button>
         </div>
       </div>
+
+      {/* Free Spin Banner */}
+      <AnimatePresence>
+        {inFreeSpin && (
+          <motion.div
+            className="w-full text-center py-2 px-4 rounded-lg border border-primary/40"
+            style={{ background: 'linear-gradient(90deg, hsl(280 60% 20%), hsl(320 50% 25%), hsl(280 60% 20%))' }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <span className="font-display text-sm sm:text-base text-primary font-bold tracking-wider">
+              🎆 FREE SPIN — {freeSpinsRemaining} remaining | Win: {totalFreeSpinWin.toLocaleString()}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Balance */}
       <div className="flex items-center gap-4 sm:gap-8 w-full justify-between">
@@ -169,7 +237,7 @@ const SlotMachine = () => {
       </div>
 
       {/* Slot Machine Frame */}
-      <div className="relative p-3 sm:p-4 rounded-2xl red-gradient shadow-2xl border border-gold/20">
+      <div className={`relative p-3 sm:p-4 rounded-2xl red-gradient shadow-2xl border border-gold/20 ${inFreeSpin ? 'freespin-active' : ''}`}>
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
         {/* Reels Container */}
@@ -220,12 +288,11 @@ const SlotMachine = () => {
 
       {/* Controls */}
       <div className="flex items-center gap-3 sm:gap-6 w-full justify-center">
-        {/* Bet Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => adjustBet(-5)}
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full red-gradient flex items-center justify-center text-secondary-foreground font-bold text-lg hover:brightness-110 transition-all"
-            disabled={spinning}
+            disabled={spinning || inFreeSpin}
           >
             −
           </button>
@@ -236,16 +303,15 @@ const SlotMachine = () => {
           <button
             onClick={() => adjustBet(5)}
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full red-gradient flex items-center justify-center text-secondary-foreground font-bold text-lg hover:brightness-110 transition-all"
-            disabled={spinning}
+            disabled={spinning || inFreeSpin}
           >
             +
           </button>
         </div>
 
-        {/* Spin Button */}
         <motion.button
           onClick={handleSpin}
-          disabled={spinning || balance < bet}
+          disabled={spinning || (!inFreeSpin && balance < bet) || inFreeSpin}
           className="w-20 h-20 sm:w-24 sm:h-24 rounded-full gold-gradient flex items-center justify-center shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={{ scale: spinning ? 1 : 1.05 }}
           whileTap={{ scale: spinning ? 1 : 0.95 }}
@@ -255,15 +321,14 @@ const SlotMachine = () => {
             animate={spinning ? { rotate: 360 } : { rotate: 0 }}
             transition={spinning ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
           >
-            {spinning ? "🐱" : "SPIN"}
+            {spinning ? "🐱" : inFreeSpin ? "FREE" : "SPIN"}
           </motion.span>
         </motion.button>
 
-        {/* Max Bet */}
         <button
           onClick={() => { playClickSound(); resumeAudio(); setBet(100); }}
           className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg red-gradient text-secondary-foreground text-xs sm:text-sm font-bold uppercase tracking-wider hover:brightness-110 transition-all"
-          disabled={spinning}
+          disabled={spinning || inFreeSpin}
         >
           Max
         </button>
@@ -301,6 +366,22 @@ const SlotMachine = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Free Spin Overlays */}
+      <FreeSpinOverlay
+        show={showFreeSpinIntro}
+        freeSpinsRemaining={freeSpinsRemaining}
+        totalFreeSpinWin={totalFreeSpinWin}
+        isIntro={true}
+        freeSpinsAwarded={freeSpinsAwarded}
+      />
+      <FreeSpinOverlay
+        show={showFreeSpinEnd}
+        freeSpinsRemaining={0}
+        totalFreeSpinWin={totalFreeSpinWin}
+        isIntro={false}
+        freeSpinsAwarded={0}
+      />
     </div>
   );
 };

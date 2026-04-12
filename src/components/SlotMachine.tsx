@@ -2,7 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
 import FreeSpinOverlay from "./FreeSpinOverlay";
-import { spin, generateReelStrip, type Symbol, type SlotResult } from "@/lib/slotEngine";
+import DevPanel from "./DevPanel";
+import { spin, generateReelStrip, type Symbol, type SlotResult, type ForceMode } from "@/lib/slotEngine";
 import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound, setMusicVolume, setSfxVolume } from "@/lib/sounds";
 import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const SlotMachine = () => {
 
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
   const stopSpinSound = useRef<(() => void) | null>(null);
+  const nextForceMode = useRef<ForceMode>('none');
 
   const doSpin = useCallback((isFree: boolean) => {
     if (spinning) return;
@@ -48,7 +50,8 @@ const SlotMachine = () => {
 
     stopSpinSound.current = playSpinSound();
 
-    const result = spin(bet);
+    const result = spin(bet, nextForceMode.current);
+    nextForceMode.current = 'none';
 
     for (let i = 0; i < 5; i++) {
       setTimeout(() => playReelStop(), 2000 + i * 100);
@@ -172,6 +175,14 @@ const SlotMachine = () => {
 
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-xl mx-auto px-4">
+      {/* Dev Panel */}
+      <DevPanel
+        onForceMode={(mode) => {
+          nextForceMode.current = mode;
+          if (!spinning && !inFreeSpin) doSpin(false);
+        }}
+        disabled={spinning || inFreeSpin}
+      />
       {/* Title + Sound Controls */}
       <div className="flex items-center justify-between w-full">
         <div className="w-20" />

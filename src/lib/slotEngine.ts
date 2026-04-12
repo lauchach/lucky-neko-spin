@@ -1,40 +1,35 @@
 export const SYMBOLS = ['🐱', '🐈', '🔔', '🐟', '💰', '🎋', '🏮', '🍀'] as const;
+export const SCATTER_SYMBOL = '🎆';
 
-export type Symbol = typeof SYMBOLS[number];
+export type Symbol = typeof SYMBOLS[number] | typeof SCATTER_SYMBOL;
 
 export interface SlotResult {
   reels: Symbol[][];
   winAmount: number;
   winningLines: number[];
   isJackpot: boolean;
+  scatterCount: number;
+  freeSpinsAwarded: number;
 }
 
 // ========== RTP CONFIGURATION ==========
-// Target RTP (Return to Player) as a decimal. 0.96 = 96%
-// Adjust this value to control the long-term payout rate.
-// Lower = house wins more, Higher = player wins more.
 const TARGET_RTP = 0.96;
 
-// Symbol payout multipliers (per bet unit, for 3-of-a-kind base)
-const SYMBOL_VALUES: Record<Symbol, number> = {
-  '🐱': 28,  // Golden cat - highest
-  '🐈': 17,  // Cat
-  '💰': 14,  // Money
-  '🔔': 11,  // Bell
-  '🐟': 8,   // Fish
-  '🏮': 7,   // Lantern
-  '🎋': 5,   // Bamboo
-  '🍀': 5,   // Clover
+const SYMBOL_VALUES: Record<string, number> = {
+  '🐱': 28,
+  '🐈': 17,
+  '💰': 14,
+  '🔔': 11,
+  '🐟': 8,
+  '🏮': 7,
+  '🎋': 5,
+  '🍀': 5,
+  '🎆': 0, // scatter doesn't pay on lines
 };
 
-// Symbol weight distribution on each reel position.
-// Higher weight = appears more often. Tuned to approximate TARGET_RTP.
-// Low-value symbols appear more frequently; high-value symbols are rarer.
 function getSymbolWeights(): { symbol: Symbol; weight: number }[] {
-  // Weights inversely related to value, then scaled to hit target RTP
-  // These weights produce ~96% RTP via Monte Carlo verification
   return [
-    { symbol: '🐱', weight: 1 },   // very rare
+    { symbol: '🐱', weight: 1 },
     { symbol: '🐈', weight: 2 },
     { symbol: '💰', weight: 3 },
     { symbol: '🔔', weight: 5 },
@@ -42,6 +37,7 @@ function getSymbolWeights(): { symbol: Symbol; weight: number }[] {
     { symbol: '🏮', weight: 10 },
     { symbol: '🎋', weight: 14 },
     { symbol: '🍀', weight: 18 },
+    { symbol: '🎆', weight: 3 }, // scatter — somewhat rare
   ];
 }
 
@@ -59,9 +55,9 @@ function getWeightedRandomSymbol(): Symbol {
   return weights[weights.length - 1].symbol;
 }
 
-// Simple uniform random for reel strip animation (visual only)
 function getRandomSymbol(): Symbol {
-  return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+  const allSymbols: Symbol[] = [...SYMBOLS, SCATTER_SYMBOL];
+  return allSymbols[Math.floor(Math.random() * allSymbols.length)];
 }
 
 export function generateReelStrip(size: number = 20): Symbol[] {
@@ -78,14 +74,28 @@ export function spin(bet: number): SlotResult {
     reels.push(reel);
   }
 
-  const middleRow = reels.map(r => r[1]);
   let winAmount = 0;
   const winningLines: number[] = [];
 
-  // Check each row for consecutive matches from left
+  // Count scatters across all reels
+  let scatterCount = 0;
+  for (const reel of reels) {
+    for (const s of reel) {
+      if (s === SCATTER_SYMBOL) scatterCount++;
+    }
+  }
+
+  // Free spins: 3=10, 4=15, 5+=20
+  let freeSpinsAwarded = 0;
+  if (scatterCount >= 3) {
+    freeSpinsAwarded = scatterCount === 3 ? 10 : scatterCount === 4 ? 15 : 20;
+  }
+
+  // Check each row for consecutive matches from left (excluding scatter from line wins)
   for (let row = 0; row < REEL_SIZE; row++) {
     const rowSymbols = reels.map(r => r[row]);
     const first = rowSymbols[0];
+    if (first === SCATTER_SYMBOL) continue; // scatter doesn't count on paylines
     let matchCount = 1;
     for (let i = 1; i < rowSymbols.length; i++) {
       if (rowSymbols[i] === first) matchCount++;
@@ -97,16 +107,16 @@ export function spin(bet: number): SlotResult {
     }
   }
 
+  const middleRow = reels.map(r => r[1]);
   const isJackpot = middleRow.every(s => s === '🐱');
   if (isJackpot) {
     winAmount = bet * 500;
   }
 
-  return { reels, winAmount, winningLines, isJackpot };
+  return { reels, winAmount, winningLines, isJackpot, scatterCount, freeSpinsAwarded };
 }
 
 // ========== RTP VERIFICATION (dev only) ==========
-// Run simulateRTP() in console to verify actual RTP matches target.
 export function simulateRTP(iterations: number = 100000): number {
   const bet = 10;
   let totalBet = 0;

@@ -130,3 +130,31 @@
   animation: payline-sweep 1s ease-in-out infinite;
   border-radius: 2px;
 }
+
+/* Scatter symbol — stands out with glow and scale */
+@keyframes scatter-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px hsl(280 100% 60% / 0.7)) drop-shadow(0 0 12px hsl(320 100% 50% / 0.4));
+    transform: scale(1.1);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px hsl(280 100% 70% / 1)) drop-shadow(0 0 24px hsl(320 100% 60% / 0.6));
+    transform: scale(1.25);
+  }
+}
+
+.scatter-symbol {
+  animation: scatter-glow 1.5s ease-in-out infinite;
+  z-index: 10;
+  position: relative;
+}
+
+/* Free spin mode border */
+@keyframes freespin-border {
+  0%, 100% { border-color: hsl(280 80% 50% / 0.5); box-shadow: 0 0 15px hsl(280 80% 50% / 0.2); }
+  50% { border-color: hsl(280 80% 60% / 0.9); box-shadow: 0 0 30px hsl(280 80% 50% / 0.4); }
+}
+
+.freespin-active {
+  animation: freespin-border 2s ease-in-out infinite;
+}

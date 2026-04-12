@@ -131,22 +131,46 @@
   border-radius: 2px;
 }
 
-/* Scatter symbol — stands out with glow and scale */
+/* Scatter symbol — floating, round, glowing, visually dominant */
 @keyframes scatter-glow {
   0%, 100% {
-    filter: drop-shadow(0 0 6px hsl(280 100% 60% / 0.7)) drop-shadow(0 0 12px hsl(320 100% 50% / 0.4));
-    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px hsl(280 100% 60% / 0.8)) drop-shadow(0 0 16px hsl(320 100% 50% / 0.5));
+    transform: scale(1.15) translateY(0px);
   }
   50% {
-    filter: drop-shadow(0 0 14px hsl(280 100% 70% / 1)) drop-shadow(0 0 24px hsl(320 100% 60% / 0.6));
-    transform: scale(1.25);
+    filter: drop-shadow(0 0 18px hsl(280 100% 70% / 1)) drop-shadow(0 0 30px hsl(320 100% 60% / 0.7));
+    transform: scale(1.3) translateY(-3px);
   }
+}
+
+@keyframes scatter-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 
 .scatter-symbol {
   animation: scatter-glow 1.5s ease-in-out infinite;
   z-index: 10;
   position: relative;
+}
+
+.scatter-symbol::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid hsl(280 80% 60% / 0.5);
+  animation: scatter-ring 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.scatter-symbol::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(280 80% 60% / 0.15), transparent 70%);
+  pointer-events: none;
 }
 
 /* Free spin mode border */

@@ -64,14 +64,57 @@ export function generateReelStrip(size: number = 20): Symbol[] {
   return Array.from({ length: size }, () => getRandomSymbol());
 }
 
-export function spin(bet: number): SlotResult {
-  const reels: Symbol[][] = [];
-  for (let i = 0; i < NUM_REELS; i++) {
-    const reel: Symbol[] = [];
-    for (let j = 0; j < REEL_SIZE; j++) {
-      reel.push(getWeightedRandomSymbol());
+export type ForceMode = 'none' | 'freespin' | 'jackpot' | 'bigwin' | 'smallwin' | '1line' | '2line' | '3line';
+
+export function spin(bet: number, forceMode: ForceMode = 'none'): SlotResult {
+  let reels: Symbol[][];
+
+  if (forceMode === 'freespin') {
+    // Force 3 scatters in different reels
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    // Place scatter on reels 0, 2, 4 middle row
+    reels[0][1] = SCATTER_SYMBOL;
+    reels[2][0] = SCATTER_SYMBOL;
+    reels[4][1] = SCATTER_SYMBOL;
+  } else if (forceMode === 'jackpot') {
+    reels = Array.from({ length: NUM_REELS }, () => ['🍀' as Symbol, '🐱' as Symbol, '🎋' as Symbol]);
+  } else if (forceMode === 'bigwin') {
+    // 5x cat on middle row
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    for (let i = 0; i < NUM_REELS; i++) reels[i][1] = '🐈';
+  } else if (forceMode === 'smallwin') {
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    reels[0][0] = '🍀'; reels[1][0] = '🍀'; reels[2][0] = '🍀';
+  } else if (forceMode === '1line') {
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    for (let i = 0; i < 4; i++) reels[i][1] = '🔔';
+  } else if (forceMode === '2line') {
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    for (let i = 0; i < 3; i++) { reels[i][0] = '🐟'; reels[i][1] = '🏮'; }
+  } else if (forceMode === '3line') {
+    reels = Array.from({ length: NUM_REELS }, () =>
+      Array.from({ length: REEL_SIZE }, () => getWeightedRandomSymbol())
+    );
+    for (let i = 0; i < 3; i++) { reels[i][0] = '🐟'; reels[i][1] = '🏮'; reels[i][2] = '🎋'; }
+  } else {
+    reels = [];
+    for (let i = 0; i < NUM_REELS; i++) {
+      const reel: Symbol[] = [];
+      for (let j = 0; j < REEL_SIZE; j++) {
+        reel.push(getWeightedRandomSymbol());
+      }
+      reels.push(reel);
     }
-    reels.push(reel);
   }
 
   let winAmount = 0;
@@ -95,7 +138,7 @@ export function spin(bet: number): SlotResult {
   for (let row = 0; row < REEL_SIZE; row++) {
     const rowSymbols = reels.map(r => r[row]);
     const first = rowSymbols[0];
-    if (first === SCATTER_SYMBOL) continue; // scatter doesn't count on paylines
+    if (first === SCATTER_SYMBOL) continue;
     let matchCount = 1;
     for (let i = 1; i < rowSymbols.length; i++) {
       if (rowSymbols[i] === first) matchCount++;

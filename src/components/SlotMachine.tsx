@@ -20,8 +20,8 @@ function getScatterReelIndices(reels: Symbol[][]): number[] {
 
 /** Calculate per-reel stop delays with scatter anticipation */
 function calcReelStopDelays(scatterReels: number[]): number[] {
-  const BASE = 2000;
-  const REEL_GAP = 100;
+  const BASE = 600;
+  const REEL_GAP = 300;
   const delays = [0, 1, 2, 3, 4].map(i => BASE + i * REEL_GAP);
 
   if (scatterReels.length < 2) return delays;

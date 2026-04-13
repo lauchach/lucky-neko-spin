@@ -55,7 +55,6 @@ function startBackgroundMusic() {
   const ctx = getCtx();
   const dest = getMusicDest();
 
-  // Chinese pentatonic: C D E G A across octaves
   const phrases = [
     [392, 440, 524, 660, 784, 660, 524, 440],
     [784, 660, 524, 440, 392, 330, 392, 440],
@@ -74,13 +73,11 @@ function startBackgroundMusic() {
     const freq = phrase[noteIdx];
     const t = ctx.currentTime;
 
-    // === Erhu-like lead (sawtooth + vibrato) ===
     const erhu = ctx.createOscillator();
     const erhuGain = ctx.createGain();
     const vibrato = ctx.createOscillator();
     const vibratoGain = ctx.createGain();
 
-    // Vibrato modulation
     vibrato.frequency.setValueAtTime(5.5, t);
     vibratoGain.gain.setValueAtTime(8, t);
     vibrato.connect(vibratoGain);
@@ -91,7 +88,6 @@ function startBackgroundMusic() {
     erhu.type = "sawtooth";
     erhu.frequency.setValueAtTime(freq, t);
 
-    // Erhu envelope — expressive slide-in
     erhuGain.gain.setValueAtTime(0, t);
     erhuGain.gain.linearRampToValueAtTime(0.04, t + 0.03);
     erhuGain.gain.linearRampToValueAtTime(0.035, t + 0.2);
@@ -102,7 +98,6 @@ function startBackgroundMusic() {
     vibrato.start(t);
     vibrato.stop(t + 0.5);
 
-    // === Guzheng-like pluck (square + fast decay, high harmonics) ===
     if (beat % 2 === 0) {
       const gz = ctx.createOscillator();
       const gzGain = ctx.createGain();
@@ -117,7 +112,6 @@ function startBackgroundMusic() {
       gz.start(t);
       gz.stop(t + 0.25);
 
-      // Guzheng shimmer harmonic
       const gzH = ctx.createOscillator();
       const gzHGain = ctx.createGain();
       gzH.connect(gzHGain);
@@ -131,9 +125,7 @@ function startBackgroundMusic() {
       gzH.stop(t + 0.15);
     }
 
-    // === Percussion — woodblock/drum on downbeats ===
     if (beat % 4 === 0) {
-      // Woodblock click
       const wb = ctx.createOscillator();
       const wbGain = ctx.createGain();
       wb.connect(wbGain);
@@ -148,7 +140,6 @@ function startBackgroundMusic() {
     }
 
     if (beat % 8 === 2) {
-      // Small gong/cymbal
       const gong = ctx.createOscillator();
       const gongGain = ctx.createGain();
       gong.connect(gongGain);
@@ -162,7 +153,6 @@ function startBackgroundMusic() {
       gong.stop(t + 0.2);
     }
 
-    // === Bass drone on phrase changes ===
     if (noteIdx === 0) {
       const bass = ctx.createOscillator();
       const bassGain = ctx.createGain();
@@ -184,7 +174,6 @@ function startBackgroundMusic() {
       phraseIdx++;
     }
 
-    // Festive rhythm — alternating fast/slow
     const delays = [200, 180, 220, 160, 240, 200, 180, 260];
     const delay = delays[beat % delays.length];
     setTimeout(playNote, delay);
@@ -195,7 +184,6 @@ function startBackgroundMusic() {
 
 /**
  * Slot reel spinning — a rhythmic soft ticking sound
- * Returns a stop function to end the loop
  */
 export function playSpinSound(): () => void {
   const ctx = getCtx();
@@ -210,11 +198,9 @@ export function playSpinSound(): () => void {
     osc.connect(gain);
     gain.connect(getSfxDest());
 
-    // Softer triangle wave with lower frequency for pleasant ticking
     osc.type = "triangle";
     osc.frequency.setValueAtTime(300 + Math.random() * 150, ctx.currentTime);
     
-    // Gentle envelope - softer attack and longer decay
     gain.gain.setValueAtTime(0, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
@@ -254,11 +240,166 @@ export function playReelStop() {
 }
 
 /**
+ * Scatter land — mystical chime when a scatter symbol stops
+ */
+export function playScatterLand(nth: number) {
+  const ctx = getCtx();
+  const t = ctx.currentTime;
+  const baseFreq = 600 + nth * 200; // higher pitch for each successive scatter
+
+  // Chime tone
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(getSfxDest());
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(baseFreq, t);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.2, t + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  osc.start(t);
+  osc.stop(t + 0.6);
+
+  // Harmonic shimmer
+  const h = ctx.createOscillator();
+  const hg = ctx.createGain();
+  h.connect(hg);
+  hg.connect(getSfxDest());
+  h.type = "triangle";
+  h.frequency.setValueAtTime(baseFreq * 1.5, t);
+  hg.gain.setValueAtTime(0, t);
+  hg.gain.linearRampToValueAtTime(0.08, t + 0.01);
+  hg.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  h.start(t);
+  h.stop(t + 0.4);
+}
+
+/**
+ * Scatter anticipation — suspenseful rising tone when 2 scatters landed
+ */
+export function playScatterAnticipation(): () => void {
+  const ctx = getCtx();
+  const t = ctx.currentTime;
+  
+  // Rising tension tone
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(getSfxDest());
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(200, t);
+  osc.frequency.linearRampToValueAtTime(800, t + 3);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.06, t + 0.3);
+  gain.gain.setValueAtTime(0.06, t + 2.5);
+  gain.gain.linearRampToValueAtTime(0, t + 3);
+  osc.start(t);
+  osc.stop(t + 3);
+
+  // Heartbeat-like pulse
+  const pulse = ctx.createOscillator();
+  const pulseGain = ctx.createGain();
+  pulse.connect(pulseGain);
+  pulseGain.connect(getSfxDest());
+  pulse.type = "sine";
+  pulse.frequency.setValueAtTime(60, t);
+  pulseGain.gain.setValueAtTime(0, t);
+  
+  // Create pulsing effect
+  for (let i = 0; i < 8; i++) {
+    const pt = t + i * 0.35;
+    pulseGain.gain.linearRampToValueAtTime(0.12, pt + 0.05);
+    pulseGain.gain.linearRampToValueAtTime(0.02, pt + 0.3);
+  }
+  pulse.start(t);
+  pulse.stop(t + 3);
+
+  return () => {
+    try {
+      gain.gain.cancelScheduledValues(ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+      osc.stop(ctx.currentTime + 0.1);
+      pulseGain.gain.cancelScheduledValues(ctx.currentTime);
+      pulseGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+      pulse.stop(ctx.currentTime + 0.1);
+    } catch {}
+  };
+}
+
+/**
+ * Scatter explosion — dramatic boom + sparkle for the 3rd scatter
+ */
+export function playScatterExplosion() {
+  const ctx = getCtx();
+  const t = ctx.currentTime;
+
+  // Deep boom
+  const boom = ctx.createOscillator();
+  const boomGain = ctx.createGain();
+  boom.connect(boomGain);
+  boomGain.connect(getSfxDest());
+  boom.type = "sine";
+  boom.frequency.setValueAtTime(120, t);
+  boom.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+  boomGain.gain.setValueAtTime(0.3, t);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  boom.start(t);
+  boom.stop(t + 0.6);
+
+  // Impact noise
+  const noise = ctx.createOscillator();
+  const noiseGain = ctx.createGain();
+  noise.connect(noiseGain);
+  noiseGain.connect(getSfxDest());
+  noise.type = "sawtooth";
+  noise.frequency.setValueAtTime(800, t);
+  noise.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+  noiseGain.gain.setValueAtTime(0.15, t);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  noise.start(t);
+  noise.stop(t + 0.2);
+
+  // Sparkle cascade
+  const sparkleNotes = [1200, 1600, 2000, 1400, 1800, 2200, 1500, 2400];
+  sparkleNotes.forEach((freq, i) => {
+    const s = ctx.createOscillator();
+    const sg = ctx.createGain();
+    s.connect(sg);
+    sg.connect(getSfxDest());
+    s.type = "sine";
+    const st = t + 0.1 + i * 0.06;
+    s.frequency.setValueAtTime(freq, st);
+    sg.gain.setValueAtTime(0, st);
+    sg.gain.linearRampToValueAtTime(0.08, st + 0.01);
+    sg.gain.exponentialRampToValueAtTime(0.001, st + 0.2);
+    s.start(st);
+    s.stop(st + 0.2);
+  });
+
+  // Victory chime
+  const chimeNotes = [784, 988, 1175, 1568];
+  chimeNotes.forEach((freq, i) => {
+    const c = ctx.createOscillator();
+    const cg = ctx.createGain();
+    c.connect(cg);
+    cg.connect(getSfxDest());
+    c.type = "triangle";
+    const ct = t + 0.3 + i * 0.15;
+    c.frequency.setValueAtTime(freq, ct);
+    cg.gain.setValueAtTime(0, ct);
+    cg.gain.linearRampToValueAtTime(0.12, ct + 0.02);
+    cg.gain.exponentialRampToValueAtTime(0.001, ct + 0.5);
+    c.start(ct);
+    c.stop(ct + 0.5);
+  });
+}
+
+/**
  * Win sound — ascending arpeggio
  */
 export function playWinSound() {
   const ctx = getCtx();
-  const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+  const notes = [523, 659, 784, 1047];
 
   notes.forEach((freq, i) => {
     const osc = ctx.createOscillator();
@@ -285,20 +426,18 @@ export function playWinSound() {
 export function playJackpotSound() {
   const ctx = getCtx();
 
-  // Fanfare notes
   const melody = [
-    { freq: 523, time: 0 },      // C5
-    { freq: 659, time: 0.15 },    // E5
-    { freq: 784, time: 0.3 },     // G5
-    { freq: 1047, time: 0.5 },    // C6
-    { freq: 784, time: 0.7 },     // G5
-    { freq: 1047, time: 0.85 },   // C6
-    { freq: 1319, time: 1.1 },    // E6
-    { freq: 1568, time: 1.4 },    // G6
+    { freq: 523, time: 0 },
+    { freq: 659, time: 0.15 },
+    { freq: 784, time: 0.3 },
+    { freq: 1047, time: 0.5 },
+    { freq: 784, time: 0.7 },
+    { freq: 1047, time: 0.85 },
+    { freq: 1319, time: 1.1 },
+    { freq: 1568, time: 1.4 },
   ];
 
   melody.forEach(({ freq, time }) => {
-    // Main tone
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -315,7 +454,6 @@ export function playJackpotSound() {
     osc.start(startTime);
     osc.stop(startTime + 0.4);
 
-    // Harmonic layer
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.connect(gain2);
@@ -332,7 +470,6 @@ export function playJackpotSound() {
     osc2.stop(startTime + 0.35);
   });
 
-  // Shimmer sweep
   const noise = ctx.createOscillator();
   const noiseGain = ctx.createGain();
   noise.connect(noiseGain);

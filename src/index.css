@@ -173,6 +173,72 @@
   pointer-events: none;
 }
 
+/* Scatter landing explosion */
+@keyframes scatter-explode {
+  0% {
+    transform: scale(0.5);
+    filter: drop-shadow(0 0 0px hsl(280 100% 60%)) brightness(3);
+  }
+  30% {
+    transform: scale(1.8);
+    filter: drop-shadow(0 0 40px hsl(280 100% 70%)) drop-shadow(0 0 60px hsl(45 100% 50%)) brightness(2);
+  }
+  60% {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 20px hsl(280 100% 60%)) brightness(1.5);
+  }
+  100% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 8px hsl(280 100% 60% / 0.8)) brightness(1);
+  }
+}
+
+.scatter-land {
+  animation: scatter-explode 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 20;
+  position: relative;
+}
+
+.scatter-land-explosive {
+  animation: scatter-explode 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 30;
+  position: relative;
+}
+
+/* Screen shake */
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-6px, -4px) rotate(-1deg); }
+  20% { transform: translate(6px, 3px) rotate(1deg); }
+  30% { transform: translate(-4px, 5px) rotate(-0.5deg); }
+  40% { transform: translate(5px, -3px) rotate(0.5deg); }
+  50% { transform: translate(-3px, 2px) rotate(-0.3deg); }
+  60% { transform: translate(3px, -2px) rotate(0.3deg); }
+  70% { transform: translate(-2px, 3px) rotate(0deg); }
+  80% { transform: translate(2px, -1px) rotate(0deg); }
+  90% { transform: translate(-1px, 1px) rotate(0deg); }
+}
+
+.screen-shake {
+  animation: screen-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Scatter anticipation — reel slowing down visual */
+@keyframes anticipation-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(280 80% 50% / 0.3), inset 0 0 10px hsl(280 80% 50% / 0.1);
+    border-color: hsl(280 80% 50% / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 25px hsl(280 80% 60% / 0.6), inset 0 0 15px hsl(280 80% 50% / 0.2);
+    border-color: hsl(280 80% 60% / 0.9);
+  }
+}
+
+.reel-anticipation {
+  animation: anticipation-glow 0.5s ease-in-out infinite;
+}
+
 /* Free spin mode border */
 @keyframes freespin-border {
   0%, 100% { border-color: hsl(280 80% 50% / 0.5); box-shadow: 0 0 15px hsl(280 80% 50% / 0.2); }
@@ -181,4 +247,16 @@
 
 .freespin-active {
   animation: freespin-border 2s ease-in-out infinite;
+}
+
+/* Flash overlay for scatter explosion */
+@keyframes flash-overlay {
+  0% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+.scatter-flash {
+  animation: flash-overlay 0.4s ease-out forwards;
+  background: radial-gradient(circle, hsl(280 80% 70% / 0.4), hsl(45 100% 50% / 0.2), transparent 70%);
+  pointer-events: none;
 }

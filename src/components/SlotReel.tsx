@@ -11,11 +11,25 @@ interface SlotReelProps {
   hasWin?: boolean;
   matchCount?: number;
   reelIndex?: number;
+  stopDelayMs?: number;
+  hasAnticipation?: boolean;
+  scatterLandClass?: string;
 }
 
-const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], hasWin = false, matchCount = 0, reelIndex = 0 }: SlotReelProps) => {
+const SlotReel = ({
+  symbols,
+  spinning,
+  delay,
+  finalSymbols,
+  winningRows = [],
+  hasWin = false,
+  matchCount = 0,
+  reelIndex = 0,
+  stopDelayMs = 2000,
+  hasAnticipation = false,
+  scatterLandClass,
+}: SlotReelProps) => {
   const [localSpinning, setLocalSpinning] = useState(false);
-  const stopDelayMs = Math.round(delay * 1000);
 
   useEffect(() => {
     if (spinning) {
@@ -30,8 +44,11 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], ha
   const displaySymbols = localSpinning ? [...symbols, ...symbols, ...symbols] : finalSymbols;
   const showWinState = !localSpinning && !spinning && hasWin;
 
+  // Slow down animation when in anticipation mode
+  const spinDuration = hasAnticipation && !spinning ? 0.6 : 0.3;
+
   return (
-    <div className="relative w-16 sm:w-20 h-48 sm:h-56 overflow-hidden rounded-lg bg-muted/50 border-2 border-gold/30 reel-mask">
+    <div className={`relative w-16 sm:w-20 h-48 sm:h-56 overflow-hidden rounded-lg bg-muted/50 border-2 border-gold/30 reel-mask ${localSpinning && hasAnticipation ? 'reel-anticipation' : ''}`}>
       <motion.div
         key={localSpinning ? "spinning" : `final-${finalSymbols.join("")}`}
         className="flex flex-col items-center"
@@ -39,7 +56,7 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], ha
         animate={localSpinning ? { y: [0, -1200] } : { y: 0 }}
         transition={localSpinning ? {
           y: {
-            duration: 0.3,
+            duration: spinDuration,
             repeat: Infinity,
             ease: "linear",
           },
@@ -52,13 +69,17 @@ const SlotReel = ({ symbols, spinning, delay, finalSymbols, winningRows = [], ha
           const isWinningCell = showWinState && winningRows.includes(i) && reelIndex < matchCount;
           const isDimmed = showWinState && !isWinningCell && !isScatter;
 
+          // Apply scatter landing class only to scatter symbols in final state
+          const landingClass = !localSpinning && !spinning && isScatter && scatterLandClass ? scatterLandClass : '';
+
           return (
             <div
               key={`${symbol}-${i}`}
               className={`flex items-center justify-center w-16 sm:w-20 h-16 sm:h-[4.67rem] text-3xl sm:text-4xl select-none transition-all duration-500
                 ${isWinningCell ? "win-cell" : ""}
                 ${isDimmed ? "opacity-30 scale-90" : ""}
-                ${isScatter && !localSpinning ? "scatter-symbol" : ""}
+                ${isScatter && !localSpinning && !landingClass ? "scatter-symbol" : ""}
+                ${landingClass}
               `}
             >
               {symbol}

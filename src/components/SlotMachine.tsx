@@ -20,8 +20,8 @@ function getScatterReelIndices(reels: Symbol[][]): number[] {
 
 /** Calculate per-reel stop delays with scatter anticipation */
 function calcReelStopDelays(scatterReels: number[]): number[] {
-  const BASE = 2000;
-  const REEL_GAP = 100;
+  const BASE = 600;
+  const REEL_GAP = 300;
   const delays = [0, 1, 2, 3, 4].map(i => BASE + i * REEL_GAP);
 
   if (scatterReels.length < 2) return delays;
@@ -32,7 +32,7 @@ function calcReelStopDelays(scatterReels: number[]): number[] {
   // After 2nd scatter reel, add big delay to remaining reels for anticipation
   const secondScatterReel = sorted[1];
   for (let i = secondScatterReel + 1; i < 5; i++) {
-    delays[i] += 1500; // extra 1.5s anticipation
+    delays[i] += 1000; // extra 1s anticipation
   }
 
   return delays;
@@ -58,7 +58,7 @@ const SlotMachine = () => {
   const [showFlash, setShowFlash] = useState(false);
 
   // Per-reel stop delays and scatter info
-  const [reelStopDelays, setReelStopDelays] = useState<number[]>([2000, 2100, 2200, 2300, 2400]);
+  const [reelStopDelays, setReelStopDelays] = useState<number[]>([600, 900, 1200, 1500, 1800]);
   const [scatterReelIndices, setScatterReelIndices] = useState<number[]>([]);
   const [scatterLandClasses, setScatterLandClasses] = useState<Record<number, string>>({});
 

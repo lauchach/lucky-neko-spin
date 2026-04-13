@@ -3,9 +3,40 @@ import { motion, AnimatePresence } from "framer-motion";
 import SlotReel from "./SlotReel";
 import FreeSpinOverlay from "./FreeSpinOverlay";
 import DevPanel from "./DevPanel";
-import { spin, generateReelStrip, type Symbol, type SlotResult, type ForceMode } from "@/lib/slotEngine";
-import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound, setMusicVolume, setSfxVolume } from "@/lib/sounds";
+import { spin, generateReelStrip, SCATTER_SYMBOL, type Symbol, type SlotResult, type ForceMode } from "@/lib/slotEngine";
+import { resumeAudio, playSpinSound, playReelStop, playWinSound, playJackpotSound, playClickSound, setMusicVolume, setSfxVolume, playScatterLand, playScatterAnticipation, playScatterExplosion } from "@/lib/sounds";
 import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
+
+/** Find which reel indices contain at least one scatter */
+function getScatterReelIndices(reels: Symbol[][]): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < reels.length; i++) {
+    if (reels[i].some(s => s === SCATTER_SYMBOL)) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
+
+/** Calculate per-reel stop delays with scatter anticipation */
+function calcReelStopDelays(scatterReels: number[]): number[] {
+  const BASE = 2000;
+  const REEL_GAP = 100;
+  const delays = [0, 1, 2, 3, 4].map(i => BASE + i * REEL_GAP);
+
+  if (scatterReels.length < 2) return delays;
+
+  // Sort scatter reel indices
+  const sorted = [...scatterReels].sort((a, b) => a - b);
+
+  // After 2nd scatter reel, add big delay to remaining reels for anticipation
+  const secondScatterReel = sorted[1];
+  for (let i = secondScatterReel + 1; i < 5; i++) {
+    delays[i] += 1500; // extra 1.5s anticipation
+  }
+
+  return delays;
+}
 
 const SlotMachine = () => {
   const [balance, setBalance] = useState(1000);
@@ -23,6 +54,13 @@ const SlotMachine = () => {
   const [winResult, setWinResult] = useState<SlotResult | null>(null);
   const [musicMuted, setMusicMuted] = useState(false);
   const [sfxMuted, setSfxMuted] = useState(false);
+  const [screenShake, setScreenShake] = useState(false);
+  const [showFlash, setShowFlash] = useState(false);
+
+  // Per-reel stop delays and scatter info
+  const [reelStopDelays, setReelStopDelays] = useState<number[]>([2000, 2100, 2200, 2300, 2400]);
+  const [scatterReelIndices, setScatterReelIndices] = useState<number[]>([]);
+  const [scatterLandClasses, setScatterLandClasses] = useState<Record<number, string>>({});
 
   // Free spin state
   const [freeSpinsRemaining, setFreeSpinsRemaining] = useState(0);
@@ -34,6 +72,7 @@ const SlotMachine = () => {
 
   const reelStrips = useRef(Array.from({ length: 5 }, () => generateReelStrip(30)));
   const stopSpinSound = useRef<(() => void) | null>(null);
+  const stopAnticipation = useRef<(() => void) | null>(null);
   const nextForceMode = useRef<ForceMode>('none');
 
   const doSpin = useCallback((isFree: boolean) => {
@@ -47,19 +86,70 @@ const SlotMachine = () => {
     setSpinning(true);
     setLastWin(0);
     setWinResult(null);
+    setScatterLandClasses({});
+    setScreenShake(false);
+    setShowFlash(false);
 
     stopSpinSound.current = playSpinSound();
 
     const result = spin(bet, nextForceMode.current);
     nextForceMode.current = 'none';
 
+    const scatterReels = getScatterReelIndices(result.reels);
+    const delays = calcReelStopDelays(scatterReels);
+    setReelStopDelays(delays);
+    setScatterReelIndices(scatterReels);
+
+    // Schedule reel stop sounds and scatter land effects
+    const sortedScatterReels = [...scatterReels].sort((a, b) => a - b);
+    let scatterCount = 0;
+
     for (let i = 0; i < 5; i++) {
-      setTimeout(() => playReelStop(), 2000 + i * 100);
+      const isScatterReel = scatterReels.includes(i);
+      
+      setTimeout(() => {
+        playReelStop();
+      }, delays[i]);
+
+      if (isScatterReel) {
+        const scatterIdx = scatterCount;
+        scatterCount++;
+
+        setTimeout(() => {
+          if (scatterIdx >= 2) {
+            // 3rd+ scatter: EXPLOSION
+            playScatterExplosion();
+            setScreenShake(true);
+            setShowFlash(true);
+            setTimeout(() => {
+              setScreenShake(false);
+              setShowFlash(false);
+            }, 600);
+            setScatterLandClasses(prev => ({ ...prev, [i]: 'scatter-land-explosive' }));
+          } else {
+            playScatterLand(scatterIdx);
+            setScatterLandClasses(prev => ({ ...prev, [i]: 'scatter-land' }));
+          }
+        }, delays[i] + 50);
+      }
     }
+
+    // Start anticipation sound after 2nd scatter lands (if there could be a 3rd)
+    if (sortedScatterReels.length >= 3) {
+      const secondScatterDelay = delays[sortedScatterReels[1]];
+      setTimeout(() => {
+        stopAnticipation.current = playScatterAnticipation();
+      }, secondScatterDelay + 100);
+    }
+
+    // Use the max delay for the final timeout
+    const maxDelay = Math.max(...delays);
 
     setTimeout(() => {
       stopSpinSound.current?.();
       stopSpinSound.current = null;
+      stopAnticipation.current?.();
+      stopAnticipation.current = null;
 
       setSpinning(false);
       setReels(result.reels);
@@ -82,7 +172,7 @@ const SlotMachine = () => {
         }
       }
 
-      // Handle free spins trigger (can retrigger during free spins)
+      // Handle free spins trigger
       if (result.freeSpinsAwarded > 0) {
         const wasAlreadyFree = isFree;
         setFreeSpinsAwarded(result.freeSpinsAwarded);
@@ -97,7 +187,6 @@ const SlotMachine = () => {
         setFreeSpinsRemaining(prev => {
           const next = prev - 1;
           if (next <= 0) {
-            // End free spins
             setTimeout(() => {
               setShowFreeSpinEnd(true);
               setTimeout(() => {
@@ -110,7 +199,7 @@ const SlotMachine = () => {
           return next;
         });
       }
-    }, 2000);
+    }, maxDelay + 200);
   }, [spinning, balance, bet]);
 
   const handleSpin = useCallback(() => {
@@ -128,6 +217,7 @@ const SlotMachine = () => {
   useEffect(() => {
     return () => {
       stopSpinSound.current?.();
+      stopAnticipation.current?.();
     };
   }, []);
 
@@ -174,7 +264,7 @@ const SlotMachine = () => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-xl mx-auto px-4">
+    <div className={`flex flex-col items-center gap-4 sm:gap-6 w-full max-w-xl mx-auto px-4 ${screenShake ? 'screen-shake' : ''}`}>
       {/* Dev Panel */}
       <DevPanel
         onForceMode={(mode) => {
@@ -251,6 +341,11 @@ const SlotMachine = () => {
       <div className={`relative p-3 sm:p-4 rounded-2xl red-gradient shadow-2xl border border-gold/20 ${inFreeSpin ? 'freespin-active' : ''}`}>
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
+        {/* Flash overlay for scatter explosion */}
+        {showFlash && (
+          <div className="absolute inset-0 rounded-2xl scatter-flash z-40" />
+        )}
+
         {/* Reels Container */}
         <div className="relative flex gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl bg-background/90 backdrop-blur border border-border">
           {reels.map((reelSymbols, i) => (
@@ -264,6 +359,9 @@ const SlotMachine = () => {
               hasWin={hasWin}
               matchCount={maxMatchCount}
               reelIndex={i}
+              stopDelayMs={reelStopDelays[i]}
+              hasAnticipation={scatterReelIndices.length >= 2 && i > scatterReelIndices.sort((a, b) => a - b)[1]}
+              scatterLandClass={scatterLandClasses[i]}
             />
           ))}
 

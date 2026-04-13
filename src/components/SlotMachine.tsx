@@ -58,7 +58,7 @@ const SlotMachine = () => {
   const [showFlash, setShowFlash] = useState(false);
 
   // Per-reel stop delays and scatter info
-  const [reelStopDelays, setReelStopDelays] = useState<number[]>([2000, 2100, 2200, 2300, 2400]);
+  const [reelStopDelays, setReelStopDelays] = useState<number[]>([600, 900, 1200, 1500, 1800]);
   const [scatterReelIndices, setScatterReelIndices] = useState<number[]>([]);
   const [scatterLandClasses, setScatterLandClasses] = useState<Record<number, string>>({});
 

@@ -32,7 +32,7 @@ function calcReelStopDelays(scatterReels: number[]): number[] {
   // After 2nd scatter reel, add big delay to remaining reels for anticipation
   const secondScatterReel = sorted[1];
   for (let i = secondScatterReel + 1; i < 5; i++) {
-    delays[i] += 1500; // extra 1.5s anticipation
+    delays[i] += 1000; // extra 1s anticipation
   }
 
   return delays;
